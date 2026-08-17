@@ -21,14 +21,11 @@ void main() {
       String name = stdin.readLineSync()!;
       stdout.write('Last name :');
       String lastname = stdin.readLineSync()!;
-      stdout.write('number :');
-      String phone = stdin.readLineSync()!;
-
       Customer customer = Customer(
         accountNumber: accountNumber,
         name: name,
         lastname: lastname,
-        phone: phone,
+      
       );
       bank.customers.add(customer);
       print('\n  CUSTOMER ADDED SUCCESSFULLY');
