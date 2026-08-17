@@ -133,13 +133,13 @@ void listCustomers(Bank bank) {
   print('\n===== CUSTOMERS =====');
 
   for (final customer in bank.customers) {
-    print('----------------------------');
+    print('---------------------------------------------');
     print('name: ${customer.name}');
     print('Account number: ${customer.accountNumber}');
     print('Balance: ${customer.balance}');
   }
 
-  print('----------------------------');
+  print('------------------------------------------------');
 }
 
 Future<void> exportCsv(Bank bank) async {
