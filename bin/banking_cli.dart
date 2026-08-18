@@ -53,35 +53,33 @@ Future<void> main() async {
 }
 
 Future<void> addCustomer(Bank bank) async {
- final accountNumber = generateAccountNumber(bank);
+  final accountNumber = generateAccountNumber(bank);
 
-print('Generated account number: $accountNumber');
+  print('Generated account number: $accountNumber');
 
   stdout.write('Name: ');
   final name = stdin.readLineSync()?.trim() ?? '';
 
-  stdout.write('Last name: ');
-  final lastname = stdin.readLineSync()?.trim() ?? '';
-
-  stdout.write('Phone: ');
-  final phone = stdin.readLineSync()?.trim() ?? '';
-
   stdout.write('Starting balance: ');
   final balance = double.tryParse(stdin.readLineSync() ?? '') ?? 0;
-
-  if (name.isEmpty || lastname.isEmpty || phone.isEmpty) {
-    print('Name, last name, and phone are required.');
-    return;
-  }
 
   if (balance < 0) {
     print('Balance cannot be negative.');
     return;
   }
+  final now = DateTime.now();
+  final createdAt = DateTime(
+    now.year,
+    now.month,
+    now.day,
+    now.hour,
+    now.minute,
+  );
 
   final customer = Customer(
     accountNumber: accountNumber,
     name: name,
+    createdAt: createdAt,
     balance: balance,
   );
 
@@ -136,6 +134,11 @@ void listCustomers(Bank bank) {
     print('---------------------------------------------');
     print('name: ${customer.name}');
     print('Account number: ${customer.accountNumber}');
+    final date = customer.createdAt;
+    print(
+      'Created at: '
+      '${date.year}/${date.month}/${date.day}    ${date.hour}:${date.minute}',
+    );
     print('Balance: ${customer.balance}');
   }
 
@@ -150,28 +153,29 @@ Future<void> exportCsv(Bank bank) async {
 
   final userProfile = Platform.environment['USERPROFILE'];
 
-if (userProfile == null) {
-  print('Could not find Downloads folder.');
-  return;
-}
+  if (userProfile == null) {
+    print('Could not find Downloads folder.');
+    return;
+  }
 
-final downloadsFolder = Directory('$userProfile\\Downloads');
-final file = File('${downloadsFolder.path}\\customers_report.csv');
+  final downloadsFolder = Directory('$userProfile\\Downloads');
+  final file = File('${downloadsFolder.path}\\customers_report.csv');
   final sink = file.openWrite();
 
-  sink.writeln('accountNumber,name,lastname,phone,balance');
+  sink.writeln('accountNumber,name,createdAt,balance');
 
   for (final customer in bank.customers) {
     sink.writeln(
       '${escapeCsv(customer.accountNumber.toString())},'
       '${escapeCsv(customer.name)},'
-      '${customer.balance}',
+      '${customer.balance},'
+      '${customer.createdAt.toIso8601String()},',
     );
   }
 
   await sink.close();
 
-print('CSV exported successfully: ${file.path}');
+  print('CSV exported successfully: ${file.path}');
 }
 
 String escapeCsv(String value) {
@@ -208,6 +212,7 @@ Future<List<Customer>> loadCustomers() async {
       return Customer(
         accountNumber: (json['accountNumber'] as num).toInt(),
         name: json['name'] as String,
+        createdAt: DateTime.now(),
         balance: (json['balance'] as num).toDouble(),
       );
     }).toList();
