@@ -59,7 +59,8 @@ Future<void> addCustomer(Bank bank) async {
 
   stdout.write('Name: ');
   final name = stdin.readLineSync()?.trim() ?? '';
-
+  stdout.write('Lastname: ');
+  final lastname = stdin.readLineSync()?.trim() ?? '';
   stdout.write('Starting balance: ');
   final balance = double.tryParse(stdin.readLineSync() ?? '') ?? 0;
 
@@ -79,6 +80,7 @@ Future<void> addCustomer(Bank bank) async {
   final customer = Customer(
     accountNumber: accountNumber,
     name: name,
+    lastname: lastname,
     createdAt: createdAt,
     balance: balance,
   );
@@ -131,8 +133,9 @@ void listCustomers(Bank bank) {
   print('\n===== CUSTOMERS =====');
 
   for (final customer in bank.customers) {
-    print('---------------------------------------------');
+    print('---------------------');
     print('name: ${customer.name}');
+    print('lastname: ${customer.lastname}');
     print('Account number: ${customer.accountNumber}');
     final date = customer.createdAt;
     print(
@@ -142,7 +145,7 @@ void listCustomers(Bank bank) {
     print('Balance: ${customer.balance}');
   }
 
-  print('------------------------------------------------');
+  print('---------------------');
 }
 
 Future<void> exportCsv(Bank bank) async {
@@ -168,6 +171,7 @@ Future<void> exportCsv(Bank bank) async {
     sink.writeln(
       '${escapeCsv(customer.accountNumber.toString())},'
       '${escapeCsv(customer.name)},'
+      '${escapeCsv(customer.lastname)},'
       '${customer.balance},'
       '${customer.createdAt.toIso8601String()},',
     );
@@ -183,6 +187,7 @@ String escapeCsv(String value) {
 
   if (escapedValue.contains(',') ||
       escapedValue.contains('"') ||
+      escapedValue.contains('\r') ||
       escapedValue.contains('\n')) {
     return '"$escapedValue"';
   }
@@ -212,6 +217,7 @@ Future<List<Customer>> loadCustomers() async {
       return Customer(
         accountNumber: (json['accountNumber'] as num).toInt(),
         name: json['name'] as String,
+        lastname: json['lastname'] as String,
         createdAt: DateTime.now(),
         balance: (json['balance'] as num).toDouble(),
       );
