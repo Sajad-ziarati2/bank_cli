@@ -57,17 +57,10 @@ Future<void> addCustomer(Bank bank) async {
 
   print('Generated account number: $accountNumber');
 
-  stdout.write('Name: ');
-  final name = stdin.readLineSync()?.trim() ?? '';
-  stdout.write('Lastname: ');
-  final lastname = stdin.readLineSync()?.trim() ?? '';
-  stdout.write('Starting balance: ');
-  final balance = double.tryParse(stdin.readLineSync() ?? '') ?? 0;
-
-  if (balance < 0) {
-    print('Balance cannot be negative.');
-    return;
-  }
+final name = readValidName('Name: ');
+final lastname = readValidName('Lastname: ');
+final balance = readValidMoney('Starting balance: ');
+  
   final now = DateTime.now();
   final createdAt = DateTime(
     now.year,
@@ -134,15 +127,15 @@ void listCustomers(Bank bank) {
 
   for (final customer in bank.customers) {
     print('---------------------');
-    print('name: ${customer.name}');
-    print('lastname: ${customer.lastname}');
-    print('Account number: ${customer.accountNumber}');
+    print('NAME: ${customer.name}');
+    print('LASTNAME: ${customer.lastname}');
+    print('ACCOUNT NUMBER: ${customer.accountNumber}');
     final date = customer.createdAt;
     print(
-      'Created at: '
+      'CREATED AT: '
       '${date.year}/${date.month}/${date.day}    ${date.hour}:${date.minute}',
     );
-    print('Balance: ${customer.balance}');
+    print('BALANCE: ${customer.balance}');
   }
 
   print('---------------------');
@@ -165,15 +158,15 @@ Future<void> exportCsv(Bank bank) async {
   final file = File('${downloadsFolder.path}\\customers_report.csv');
   final sink = file.openWrite();
 
-  sink.writeln('accountNumber,name,createdAt,balance');
+  sink.writeln('accountNumber,name,lastname,createdAt,balance');
 
   for (final customer in bank.customers) {
     sink.writeln(
       '${escapeCsv(customer.accountNumber.toString())},'
       '${escapeCsv(customer.name)},'
       '${escapeCsv(customer.lastname)},'
-      '${customer.balance},'
-      '${customer.createdAt.toIso8601String()},',
+      '${customer.createdAt.toIso8601String()},'
+      '${customer.balance}',
     );
   }
 
@@ -218,7 +211,7 @@ Future<List<Customer>> loadCustomers() async {
         accountNumber: (json['accountNumber'] as num).toInt(),
         name: json['name'] as String,
         lastname: json['lastname'] as String,
-        createdAt: DateTime.now(),
+        createdAt: DateTime.parse(json['createdAt'] as String),
         balance: (json['balance'] as num).toDouble(),
       );
     }).toList();
@@ -237,6 +230,8 @@ Future<void> saveCustomers(List<Customer> customers) async {
     return {
       'accountNumber': customer.accountNumber,
       'name': customer.name,
+      'lastname': customer.lastname,
+      'createdAt': customer.createdAt.toIso8601String(),
       'balance': customer.balance,
     };
   }).toList();
@@ -254,4 +249,62 @@ int generateAccountNumber(Bank bank) {
       .reduce((a, b) => a > b ? a : b);
 
   return largestAccountNumber + 1;
+}
+
+bool isValidName(String value) {
+  final namePattern = RegExp(
+    r'^[a-zA-Z\u0621-\u064A\u067E\u0686\u0698\u06A9\u06AF\u06CC\u200C ]+$',
+  );
+
+  return value.trim().isNotEmpty && namePattern.hasMatch(value);
+}
+
+double? parseMoney(String input) {
+  String value = input.trim();
+
+  const persianDigits = '۰۱۲۳۴۵۶۷۸۹';
+  const arabicDigits = '٠١٢٣٤٥٦٧٨٩';
+  const englishDigits = '0123456789';
+
+  for (int i = 0; i < 10; i++) {
+    value = value.replaceAll(persianDigits[i], i.toString());
+    value = value.replaceAll(arabicDigits[i], i.toString());
+    value = value.replaceAll(englishDigits[i], i.toString());
+  }
+
+  value = value.replaceAll(',', '');
+  value = value.replaceAll('٬', '');
+  value = value.replaceAll('٫', '.');
+
+  final moneyPattern = RegExp(r'^\d+(\.\d{1,2})?$');
+
+  if (!moneyPattern.hasMatch(value)) {
+    return null;
+  }
+
+  return double.parse(value);
+}
+String readValidName(String label) {
+  while (true) {
+    stdout.write(label);
+    final value = stdin.readLineSync()?.trim() ?? '';
+
+    if (isValidName(value)) {
+      return value;
+    }
+
+    print('Only Persian or English letters are allowed. Try again.');
+  }
+}
+double readValidMoney(String label) {
+  while (true) {
+    stdout.write(label);
+    final value = parseMoney(stdin.readLineSync() ?? '');
+
+    if (value != null) {
+      return value;
+    }
+
+    print('Enter a valid non-negative amount. Try again.');
+  }
 }
