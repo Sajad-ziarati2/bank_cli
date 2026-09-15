@@ -1,15 +1,15 @@
 import 'dart:convert';
 import 'dart:io';
-
 import 'package:todo_app/bank.dart';
 import 'package:todo_app/customer.dart';
 
 const String customersFilePath = 'data/customers.json';
 
-Future<void> main() async {
+Future<void> bankingcli() async {
   final bank = Bank();
 
   final savedCustomers = await loadCustomers();
+
   bank.customers.addAll(savedCustomers);
 
   print('${bank.customers.length} customer(s) loaded.');
@@ -57,10 +57,10 @@ Future<void> addCustomer(Bank bank) async {
 
   print('Generated account number: $accountNumber');
 
-final name = readValidName('Name: ');
-final lastname = readValidName('Lastname: ');
-final balance = readValidMoney('Starting balance: ');
-  
+  final name = readValidName('Name: ');
+  final lastname = readValidName('Lastname: ');
+  final balance = readValidMoney('Starting balance: ');
+
   final now = DateTime.now();
   final createdAt = DateTime(
     now.year,
@@ -135,7 +135,7 @@ void listCustomers(Bank bank) {
       'CREATED AT: '
       '${date.year}/${date.month}/${date.day}    ${date.hour}:${date.minute}',
     );
-    print('BALANCE: ${customer.balance}');
+    print('BALANCE: ${customer.balance} AF');
   }
 
   print('---------------------');
@@ -284,6 +284,7 @@ double? parseMoney(String input) {
 
   return double.parse(value);
 }
+
 String readValidName(String label) {
   while (true) {
     stdout.write(label);
@@ -296,6 +297,7 @@ String readValidName(String label) {
     print('Only Persian or English letters are allowed. Try again.');
   }
 }
+
 double readValidMoney(String label) {
   while (true) {
     stdout.write(label);

@@ -14,7 +14,12 @@ class Customer {
   });
 
   Map<String, dynamic> toJson() {
-    return {'accountNumber': accountNumber, 'name': name,'lastname': lastname, 'balance': balance};
+    return {
+      'accountNumber': accountNumber,
+      'name': name,
+      'lastname': lastname,
+      'balance': balance,
+    };
   }
 
   factory Customer.fromJson(Map<String, dynamic> Json) {
