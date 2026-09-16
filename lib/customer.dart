@@ -3,7 +3,7 @@ class Customer {
   final String name;
   final String lastname;
   final DateTime createdAt;
-  final double balance;
+   double balance;
 
   Customer({
     required this.accountNumber,

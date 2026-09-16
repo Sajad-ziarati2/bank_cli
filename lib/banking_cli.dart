@@ -20,7 +20,8 @@ Future<void> bankingcli() async {
     print('2. Remove customer');
     print('3. List customers');
     print('4. Export report as CSV');
-    print('5. Exit');
+    print('5. transections');
+    print('6. Exit');
 
     stdout.write('\nChoose an option: ');
     final choice = stdin.readLineSync()?.trim();
@@ -43,11 +44,15 @@ Future<void> bankingcli() async {
         break;
 
       case '5':
+        await transiction(bank);
+        break;
+
+      case '6':
         print('\nGoodbye.');
         return;
 
       default:
-        print('Invalid option. Please enter a number from 1 to 5.');
+        print('Invalid option. Please enter a number from 1 to 6.');
     }
   }
 }
@@ -175,6 +180,7 @@ Future<void> exportCsv(Bank bank) async {
   print('CSV exported successfully: ${file.path}');
 }
 
+
 String escapeCsv(String value) {
   final escapedValue = value.replaceAll('"', '""');
 
@@ -186,6 +192,89 @@ String escapeCsv(String value) {
   }
 
   return escapedValue;
+}
+
+Future<void> transiction(Bank bank) async {
+  if (bank.customers.isEmpty) {
+    print('No customers found.');
+    return;
+  }
+
+  stdout.write('Enter account number: ');
+  final accountNumber = int.tryParse(stdin.readLineSync()?.trim() ?? '');
+
+  if (accountNumber == null) {
+    print('Invalid account number.');
+    return;
+  }
+
+  Customer? selectedCustomer;
+
+  for (final customer in bank.customers) {
+    if (customer.accountNumber == accountNumber) {
+      selectedCustomer = customer;
+      break;
+    }
+  }
+
+  if (selectedCustomer == null) {
+    print('Customer not found.');
+    return;
+  }
+
+  while (true) {
+    print('\n===== TRANSACTION =====');
+    print('1. Deposit');
+    print('2. Withdraw');
+    print('3. Exit');
+
+    stdout.write('Choose an option: ');
+    final choice = stdin.readLineSync()?.trim();
+
+    switch (choice) {
+      case '1':
+        final amount = readValidMoney('Deposit amount: ');
+
+        if (amount <= 0) {
+          print('Amount must be greater than zero.');
+          break;
+        }
+
+        selectedCustomer.balance += amount;
+        await saveCustomers(bank.customers);
+
+        print('Deposit successful.');
+        print('New balance: ${selectedCustomer.balance} AF');
+        break;
+
+      case '2':
+        final amount = readValidMoney('Withdraw amount: ');
+
+        if (amount <= 0) {
+          print('Amount must be greater than zero.');
+          break;
+        }
+
+        if (amount > selectedCustomer.balance) {
+          print('Your balance is insufficient for this withdrawal.');
+          break;
+        }
+
+        selectedCustomer.balance -= amount;
+        await saveCustomers(bank.customers);
+
+        print('Withdrawal successful.');
+        print('New balance: ${selectedCustomer.balance} AF');
+        break;
+
+      case '3':
+        print('Leaving transaction menu.');
+        return;
+
+      default:
+        print('Invalid option. Enter 1, 2, or 3.');
+    }
+  }
 }
 
 Future<List<Customer>> loadCustomers() async {
