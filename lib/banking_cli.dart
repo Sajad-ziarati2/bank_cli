@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:todo_app/bank.dart';
 import 'package:todo_app/customer.dart';
+import 'package:todo_app/transaction.dart';
 
+const String transactionsFilePath = 'data/transactions.json';
 const String customersFilePath = 'data/customers.json';
 
 Future<void> bankingcli() async {
@@ -180,7 +182,6 @@ Future<void> exportCsv(Bank bank) async {
   print('CSV exported successfully: ${file.path}');
 }
 
-
 String escapeCsv(String value) {
   final escapedValue = value.replaceAll('"', '""');
 
@@ -224,15 +225,21 @@ Future<void> transiction(Bank bank) async {
 
   while (true) {
     print('\n===== TRANSACTION =====');
-    print('1. Deposit');
-    print('2. Withdraw');
-    print('3. Exit');
+    print('1. show balance');
+    print('2. Deposit');
+    print('3. Withdraw');
+    print('4. Show all transactions');
+    print('5. Exit');
 
     stdout.write('Choose an option: ');
     final choice = stdin.readLineSync()?.trim();
 
     switch (choice) {
       case '1':
+        print('Your balance is: ${selectedCustomer.balance}AF');
+        break;
+
+      case '2':
         final amount = readValidMoney('Deposit amount: ');
 
         if (amount <= 0) {
@@ -247,7 +254,7 @@ Future<void> transiction(Bank bank) async {
         print('New balance: ${selectedCustomer.balance} AF');
         break;
 
-      case '2':
+      case '3':
         final amount = readValidMoney('Withdraw amount: ');
 
         if (amount <= 0) {
@@ -262,17 +269,23 @@ Future<void> transiction(Bank bank) async {
 
         selectedCustomer.balance -= amount;
         await saveCustomers(bank.customers);
+        
 
         print('Withdrawal successful.');
         print('New balance: ${selectedCustomer.balance} AF');
         break;
 
-      case '3':
+      case '4':
+        await loadCustomers();
+        break;
+
+        
+      case '5':
         print('Leaving transaction menu.');
         return;
 
       default:
-        print('Invalid option. Enter 1, 2, or 3.');
+        print('Invalid option. Enter 1, 2, 3,4, or 5.');
     }
   }
 }
