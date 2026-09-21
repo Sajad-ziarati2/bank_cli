@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:todo_app/bank.dart';
 import 'package:todo_app/customer.dart';
 import 'package:todo_app/transaction.dart';
@@ -11,7 +12,6 @@ Future<void> bankingcli() async {
   final bank = Bank();
 
   final savedCustomers = await loadCustomers();
-
   bank.customers.addAll(savedCustomers);
 
   print('${bank.customers.length} customer(s) loaded.');
@@ -21,8 +21,8 @@ Future<void> bankingcli() async {
     print('1. Add customer');
     print('2. Remove customer');
     print('3. List customers');
-    print('4. Export report as CSV');
-    print('5. transections');
+    print('4. Export customers report as CSV');
+    print('5. Transactions');
     print('6. Exit');
 
     stdout.write('\nChoose an option: ');
@@ -68,25 +68,15 @@ Future<void> addCustomer(Bank bank) async {
   final lastname = readValidName('Lastname: ');
   final balance = readValidMoney('Starting balance: ');
 
-  final now = DateTime.now();
-  final createdAt = DateTime(
-    now.year,
-    now.month,
-    now.day,
-    now.hour,
-    now.minute,
-  );
-
   final customer = Customer(
     accountNumber: accountNumber,
     name: name,
     lastname: lastname,
-    createdAt: createdAt,
+    createdAt: DateTime.now(),
     balance: balance,
   );
 
   bank.customers.add(customer);
-
   await saveCustomers(bank.customers);
 
   print('\nCustomer added and saved successfully.');
@@ -99,7 +89,7 @@ Future<void> removeCustomer(Bank bank) async {
   }
 
   stdout.write('Account number to remove: ');
-  final accountNumber = int.tryParse(stdin.readLineSync() ?? '');
+  final accountNumber = int.tryParse(stdin.readLineSync()?.trim() ?? '');
 
   if (accountNumber == null) {
     print('Account number is invalid.');
@@ -137,11 +127,7 @@ void listCustomers(Bank bank) {
     print('NAME: ${customer.name}');
     print('LASTNAME: ${customer.lastname}');
     print('ACCOUNT NUMBER: ${customer.accountNumber}');
-    final date = customer.createdAt;
-    print(
-      'CREATED AT: '
-      '${date.year}/${date.month}/${date.day}    ${date.hour}:${date.minute}',
-    );
+    print('CREATED AT: ${customer.createdAt}');
     print('BALANCE: ${customer.balance} AF');
   }
 
@@ -179,20 +165,7 @@ Future<void> exportCsv(Bank bank) async {
 
   await sink.close();
 
-  print('CSV exported successfully: ${file.path}');
-}
-
-String escapeCsv(String value) {
-  final escapedValue = value.replaceAll('"', '""');
-
-  if (escapedValue.contains(',') ||
-      escapedValue.contains('"') ||
-      escapedValue.contains('\r') ||
-      escapedValue.contains('\n')) {
-    return '"$escapedValue"';
-  }
-
-  return escapedValue;
+  print('Customers CSV exported successfully: ${file.path}');
 }
 
 Future<void> transiction(Bank bank) async {
@@ -225,10 +198,10 @@ Future<void> transiction(Bank bank) async {
 
   while (true) {
     print('\n===== TRANSACTION =====');
-    print('1. show balance');
+    print('1. Show balance');
     print('2. Deposit');
     print('3. Withdraw');
-    print('4. Show all transactions');
+    print('4. Export this customer transactions as CSV');
     print('5. Exit');
 
     stdout.write('Choose an option: ');
@@ -236,7 +209,7 @@ Future<void> transiction(Bank bank) async {
 
     switch (choice) {
       case '1':
-        print('Your balance is: ${selectedCustomer.balance}AF');
+        print('Your balance is: ${selectedCustomer.balance} AF');
         break;
 
       case '2':
@@ -248,6 +221,16 @@ Future<void> transiction(Bank bank) async {
         }
 
         selectedCustomer.balance += amount;
+
+        await saveTransaction(
+          BankTransaction(
+            accountNumber: selectedCustomer.accountNumber,
+            type: 'deposit',
+            amount: amount,
+            date: DateTime.now(),
+          ),
+        );
+
         await saveCustomers(bank.customers);
 
         print('Deposit successful.');
@@ -268,26 +251,77 @@ Future<void> transiction(Bank bank) async {
         }
 
         selectedCustomer.balance -= amount;
+
+        await saveTransaction(
+          BankTransaction(
+            accountNumber: selectedCustomer.accountNumber,
+            type: 'withdraw',
+            amount: amount,
+            date: DateTime.now(),
+          ),
+        );
+
         await saveCustomers(bank.customers);
-        
 
         print('Withdrawal successful.');
         print('New balance: ${selectedCustomer.balance} AF');
         break;
 
       case '4':
-        await loadCustomers();
+        await exportCustomerTransactionsCsv(selectedCustomer);
         break;
 
-        
       case '5':
         print('Leaving transaction menu.');
         return;
 
       default:
-        print('Invalid option. Enter 1, 2, 3,4, or 5.');
+        print('Invalid option. Enter 1, 2, 3, 4, or 5.');
     }
   }
+}
+
+Future<void> exportCustomerTransactionsCsv(Customer customer) async {
+  final transactions = await loadTransactions();
+
+  final customerTransactions = transactions.where(
+    (transaction) => transaction.accountNumber == customer.accountNumber,
+  ).toList();
+
+  if (customerTransactions.isEmpty) {
+    print('No transactions found for this customer.');
+    return;
+  }
+
+  final userProfile = Platform.environment['USERPROFILE'];
+
+  if (userProfile == null) {
+    print('Could not find Downloads folder.');
+    return;
+  }
+
+  final downloadsFolder = Directory('$userProfile\\Downloads');
+
+  final file = File(
+    '${downloadsFolder.path}\\transactions_customer_${customer.accountNumber}.csv',
+  );
+
+  final sink = file.openWrite();
+
+  sink.writeln('customerId,type,amount,date');
+
+  for (final transaction in customerTransactions) {
+    sink.writeln(
+      '${transaction.accountNumber},'
+      '${transaction.type},'
+      '${transaction.amount},'
+      '${transaction.date.toIso8601String().split('.').first}',
+    );
+  }
+
+  await sink.close();
+
+  print('Transaction report exported: ${file.path}');
 }
 
 Future<List<Customer>> loadCustomers() async {
@@ -307,14 +341,8 @@ Future<List<Customer>> loadCustomers() async {
     final List<dynamic> data = jsonDecode(content);
 
     return data.map((item) {
-      final json = Map<String, dynamic>.from(item as Map);
-
-      return Customer(
-        accountNumber: (json['accountNumber'] as num).toInt(),
-        name: json['name'] as String,
-        lastname: json['lastname'] as String,
-        createdAt: DateTime.parse(json['createdAt'] as String),
-        balance: (json['balance'] as num).toDouble(),
+      return Customer.fromJson(
+        Map<String, dynamic>.from(item as Map),
       );
     }).toList();
   } catch (error) {
@@ -338,7 +366,63 @@ Future<void> saveCustomers(List<Customer> customers) async {
     };
   }).toList();
 
-  await file.writeAsString(const JsonEncoder.withIndent('  ').convert(data));
+  await file.writeAsString(
+    const JsonEncoder.withIndent('  ').convert(data),
+  );
+}
+
+Future<List<BankTransaction>> loadTransactions() async {
+  final file = File(transactionsFilePath);
+
+  if (!await file.exists()) {
+    return [];
+  }
+
+  try {
+    final content = await file.readAsString();
+
+    if (content.trim().isEmpty) {
+      return [];
+    }
+
+    final List<dynamic> data = jsonDecode(content);
+
+    return data.map((item) {
+      return BankTransaction.fromJson(
+        Map<String, dynamic>.from(item as Map),
+      );
+    }).toList();
+  } catch (error) {
+    print('Could not read transactions.json: $error');
+    return [];
+  }
+}
+
+Future<void> saveTransaction(BankTransaction transaction) async {
+  final transactions = await loadTransactions();
+  transactions.add(transaction);
+
+  final file = File(transactionsFilePath);
+  await file.parent.create(recursive: true);
+
+  final data = transactions.map((item) => item.toJson()).toList();
+
+  await file.writeAsString(
+    const JsonEncoder.withIndent('  ').convert(data),
+  );
+}
+
+String escapeCsv(String value) {
+  final escapedValue = value.replaceAll('"', '""');
+
+  if (escapedValue.contains(',') ||
+      escapedValue.contains('"') ||
+      escapedValue.contains('\r') ||
+      escapedValue.contains('\n')) {
+    return '"$escapedValue"';
+  }
+
+  return escapedValue;
 }
 
 int generateAccountNumber(Bank bank) {
@@ -366,12 +450,10 @@ double? parseMoney(String input) {
 
   const persianDigits = '۰۱۲۳۴۵۶۷۸۹';
   const arabicDigits = '٠١٢٣٤٥٦٧٨٩';
-  const englishDigits = '0123456789';
 
   for (int i = 0; i < 10; i++) {
     value = value.replaceAll(persianDigits[i], i.toString());
     value = value.replaceAll(arabicDigits[i], i.toString());
-    value = value.replaceAll(englishDigits[i], i.toString());
   }
 
   value = value.replaceAll(',', '');
